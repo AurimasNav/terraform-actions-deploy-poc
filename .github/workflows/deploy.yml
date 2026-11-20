@@ -33,107 +33,27 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: bash scripts/changed-root-modules.sh
 
-  check-jobs:
-    name: Every root module has a job
+  start:
+    name: Start a run per root module
+    needs: changes
+    if: needs.changes.outputs.modules != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: bash scripts/check-deploy-jobs.sh
-
-  shared-x:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-x')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: shared-x }
-
-  shared-y:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-y')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: shared-y }
-
-  shared-z:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-z')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: shared-z }
-
-  team-a:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-a')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-a }
-
-  team-b:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-b')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-b }
-
-  team-c:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-c')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-c }
-
-  team-d:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-d')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-d }
-
-  team-e:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-e')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-e }
-
-  team-f:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-f')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-f }
-
-  team-g:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-g')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-g }
-
-  team-h:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-h')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-h }
-
-  team-i:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-i')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-i }
-
-  team-j:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-j')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-j }
-
-  team-k:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-k')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-k }
-
-  team-l:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-l')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-l }
-
-  team-m:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.modules), 'team-m')
-    uses: ./.github/workflows/root-module.yml
-    with: { module: team-m }
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MODULES: ${{ needs.changes.outputs.modules }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          FAIL_TEST: ${{ inputs.fail_test }}
+        run: |
+          echo "Runs started for $COMMIT:" >> "$GITHUB_STEP_SUMMARY"
+          for MODULE in $(jq -r '.[]' <<<"$MODULES"); do
+            OUTPUT="$(gh workflow run root-module.yml --ref "$BRANCH" \
+              -f module="$MODULE" -f ref="$COMMIT" -f fail_test="$FAIL_TEST")"
+            URL="$(grep -o 'https://[^ ]*' <<<"$OUTPUT" || echo "$GITHUB_SERVER_URL/$GH_REPO/actions/workflows/root-module.yml")"
+            echo "Deploy $MODULE: $URL"
+            echo "- [Deploy $MODULE]($URL)" >> "$GITHUB_STEP_SUMMARY"
+          done

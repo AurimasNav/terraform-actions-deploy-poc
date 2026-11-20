@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKFLOW=.github/workflows/deploy.yml
+WORKFLOW=.github/workflows/deploy-explicit.yml
 MISSING=0
 for DIR in src/*/; do
   MODULE="$(basename "$DIR")"

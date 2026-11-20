@@ -1,0 +1,136 @@
+name: Deploy (explicit jobs)
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: Root modules to deploy, comma-separated, or all
+        default: all
+      fail_test:
+        description: Root module whose Deploy test fails
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Changed root modules
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.select.outputs.modules }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: select
+        env:
+          SELECTION: ${{ inputs.modules }}
+          BEFORE: ${{ github.event.before }}
+        run: bash scripts/changed-root-modules.sh
+
+  check-jobs:
+    name: Every root module has a job
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/check-deploy-jobs.sh
+
+  shared-x:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-x')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: shared-x }
+
+  shared-y:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-y')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: shared-y }
+
+  shared-z:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-z')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: shared-z }
+
+  team-a:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-a')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-a }
+
+  team-b:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-b')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-b }
+
+  team-c:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-c')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-c }
+
+  team-d:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-d')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-d }
+
+  team-e:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-e')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-e }
+
+  team-f:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-f')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-f }
+
+  team-g:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-g')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-g }
+
+  team-h:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-h')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-h }
+
+  team-i:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-i')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-i }
+
+  team-j:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-j')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-j }
+
+  team-k:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-k')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-k }
+
+  team-l:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-l')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-l }
+
+  team-m:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-m')
+    uses: ./.github/workflows/root-module.yml
+    with: { module: team-m }

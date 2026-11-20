@@ -30,14 +30,66 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: bash scripts/changed-root-modules.sh
 
-  root-module:
-    name: ${{ matrix.module }}
+  deploy-test:
+    name: Deploy test ${{ matrix.module }}
     needs: changes
     if: needs.changes.outputs.modules != '[]'
     strategy:
       fail-fast: false
       matrix:
         module: ${{ fromJSON(needs.changes.outputs.modules) }}
-    uses: ./.github/workflows/root-module.yml
+    uses: ./.github/workflows/terraform-apply.yml
     with:
       module: ${{ matrix.module }}
+      environment: test
+
+  plan-prod:
+    name: Plan prod ${{ matrix.module }}
+    needs: changes
+    if: needs.changes.outputs.modules != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.changes.outputs.modules) }}
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      module: ${{ matrix.module }}
+      environment: prod
+
+  ready:
+    name: Ready for prod
+    needs: [changes, deploy-test, plan-prod]
+    if: ${{ !cancelled() && needs.changes.outputs.modules != '[]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      modules: ${{ steps.ready.outputs.modules }}
+    steps:
+      - id: ready
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          SUCCEEDED="$(gh api --paginate "repos/$GH_REPO/actions/runs/$RUN_ID/jobs?filter=latest&per_page=100" \
+            --jq '.jobs[] | select(.conclusion == "success") | .name')"
+          TESTED="$(sed -n 's|^Deploy test \([^ ]*\) / .*|\1|p' <<<"$SUCCEEDED" | sort)"
+          PLANNED="$(sed -n 's|^Plan prod \([^ ]*\) / .*|\1|p' <<<"$SUCCEEDED" | sort)"
+          MODULES="$(comm -12 <(echo "$TESTED") <(echo "$PLANNED") | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          echo "Root modules whose Deploy test and Plan prod succeeded: $MODULES"
+          echo "modules=$MODULES" >> "$GITHUB_OUTPUT"
+
+  deploy-prod:
+    name: Deploy prod ${{ matrix.module }}
+    needs: ready
+    if: ${{ !cancelled() && needs.ready.result == 'success' && needs.ready.outputs.modules != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.ready.outputs.modules) }}
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      module: ${{ matrix.module }}
+      environment: prod
+      saved_plan: true
