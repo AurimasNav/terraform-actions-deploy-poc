@@ -7,19 +7,20 @@ looks in GitHub Actions. The repository has 16 root modules (`src/*`), each depl
 ## The Bitbucket pipeline
 
 On a merge to `main`, for each changed root module: **Deploy test** and **Plan prod** run
-side by side, then **Deploy prod** is started by hand after reviewing the plan. Bitbucket
-makes this pipeline look as follows:
+side by side, then **Deploy prod** is started by hand after reviewing the plan. Bitbucket's
+rules shape the pipeline:
 
-- A deployment environment can be used by only one step per pipeline (stages share one
-  environment between steps, but [a stage can't include parallel steps](https://support.atlassian.com/bitbucket-cloud/docs/stage-options/)).
+- A deployment environment can be used by only one step per pipeline: Bitbucket
+  [rejects the pipeline otherwise](https://community.atlassian.com/t5/Bitbucket-questions/The-deployment-environment-test-in-your-bitbucket-pipelines-yml/qaq-p/1250596)
+  (stages share one environment between steps, but [a stage can't include parallel steps](https://support.atlassian.com/bitbucket-cloud/docs/stage-options/)).
   So every root module has its own environments, `<module>-test` and `<module>-prod`:
   32 environments for 16 root modules, created by a script and deleted by hand.
 - [All environments in a parallel step set must be of the same type](https://support.atlassian.com/bitbucket-cloud/docs/parallel-step-options/),
   so the Deploy prod steps form a second parallel group after the Deploy test group.
 - A step starts only when the whole previous group succeeded: one root module's failed
   Deploy test blocks every root module's Deploy prod ([BCLOUD-19908](https://jira.atlassian.com/browse/BCLOUD-19908)).
-- Steps can't be templated per root module, so a script generates the 48 steps (3 per root
-  module) into `bitbucket-pipelines.yml`, and a check fails pull requests that leave it out
+- There is no matrix or loop over root modules, so a script generates the 48 steps (3 per
+  root module) into `bitbucket-pipelines.yml`, and a check fails pull requests that leave it out
   of date. A pipeline holds [at most 100 steps](https://support.atlassian.com/bitbucket-cloud/docs/limitations-of-bitbucket-pipelines/):
   about 33 root modules.
 
@@ -47,13 +48,17 @@ Bitbucket, one pipeline per merge
 - Two environments, `test` and `prod`, for every root module. `prod` has
   [required reviewers](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments#required-reviewers),
   so Deploy prod waits for an approval, and only `main` may deploy to it.
+- An approval is given per environment and run: one approval of `prod` starts every root
+  module's Deploy prod that waits in that run. Approving root modules one by one needs a
+  prod environment per root module, as in Bitbucket today.
 - A new root module is a new folder under `src/`: nothing is generated. A matrix makes
   [up to 256 jobs](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstrategymatrix).
 - Each root module's deployments to one environment share a
-  [concurrency group](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency):
-  a second one waits for the running one, and a newer one replaces one that is still
-  waiting, since the newer commit includes its changes. `queue: max` would keep up to 100
-  waiting instead.
+  [concurrency group](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+  A second one waits for the running one, and a newer one replaces one that is still
+  waiting, since the newer commit includes its changes (`queue: max` would keep up to 100
+  waiting instead). A Deploy prod waiting for approval holds the group: a newer run's
+  Deploy prod of that root module waits until the older one is approved or rejected.
 
 ```text
 GitHub, one run per merge
@@ -66,11 +71,18 @@ GitHub, one run per merge
   A failed Deploy test skips only its own module's Deploy prod.
 ```
 
-## Try it
+## Runs
 
-Actions, **Deploy**, Run workflow, with `fail_test` set to a root module, e.g. `team-c`.
-team-c's Deploy test fails and its Deploy prod is skipped; every other root module's Deploy
-prod waits for approval and then deploys.
+Measured on 2026-11-20:
+
+| Run | What happened |
+|---|---|
+| [Push, all 16 root modules](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44710184043) | 16 Deploy test and 16 Plan prod succeeded; one approval of `prod` started all 16 Deploy prod. |
+| [Run workflow, `fail_test: team-c`](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44710269602) | team-c's Deploy test failed and only its Deploy prod was skipped; the other 15 deployed to prod. Started while the first run waited for approval, its Deploy prod jobs stayed pending until that approval. |
+| [Push changing only team-b](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44710848480) | Only team-b's three jobs ran. |
+
+To try it (needs write access, and the repository owner approves `prod`): Actions,
+**Deploy**, Run workflow, with `fail_test` set to a root module.
 
 ## Limits
 
