@@ -46,8 +46,11 @@ jobs:
           COMMIT: ${{ github.sha }}
           FAIL_TEST: ${{ inputs.fail_test }}
         run: |
+          echo "Runs started for $COMMIT:" >> "$GITHUB_STEP_SUMMARY"
           for MODULE in $(jq -r '.[]' <<<"$MODULES"); do
-            gh workflow run root-module.yml --ref "$BRANCH" \
-              -f module="$MODULE" -f ref="$COMMIT" -f fail_test="$FAIL_TEST"
-            echo "Started Deploy $MODULE at $COMMIT"
+            OUTPUT="$(gh workflow run root-module.yml --ref "$BRANCH" \
+              -f module="$MODULE" -f ref="$COMMIT" -f fail_test="$FAIL_TEST")"
+            URL="$(grep -o 'https://[^ ]*' <<<"$OUTPUT" || echo "$GITHUB_SERVER_URL/$GH_REPO/actions/workflows/root-module.yml")"
+            echo "Deploy $MODULE: $URL"
+            echo "- [Deploy $MODULE]($URL)" >> "$GITHUB_STEP_SUMMARY"
           done
