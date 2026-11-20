@@ -1,0 +1,46 @@
+name: Terraform
+description: Plans or applies one root module in one workspace. A stand-in that echoes the Terraform commands.
+
+inputs:
+  module:
+    description: Root module, a folder under src/
+    required: true
+  workspace:
+    description: Terraform workspace, test or prod
+    required: true
+  command:
+    description: plan or apply
+    required: true
+  plan-file:
+    description: Saved plan that plan writes and apply applies; empty for apply to plan and apply in one go
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        MODULE: ${{ inputs.module }}
+        WORKSPACE: ${{ inputs.workspace }}
+        COMMAND: ${{ inputs.command }}
+        PLAN_FILE: ${{ inputs.plan-file }}
+      run: |
+        echo "terraform -chdir=src/$MODULE init"
+        echo "terraform -chdir=src/$MODULE workspace select $WORKSPACE"
+        case "$COMMAND" in
+          plan)
+            echo "terraform -chdir=src/$MODULE plan -out=$PLAN_FILE"
+            mkdir -p "$(dirname "$PLAN_FILE")"
+            echo "Plan of src/$MODULE, workspace $WORKSPACE" > "$PLAN_FILE"
+            ;;
+          apply)
+            if [[ -n "$PLAN_FILE" ]]; then
+              cat "$PLAN_FILE"
+            fi
+            echo "terraform -chdir=src/$MODULE apply $PLAN_FILE"
+            ;;
+          *)
+            echo "::error::command must be plan or apply, not '$COMMAND'"
+            exit 1
+            ;;
+        esac

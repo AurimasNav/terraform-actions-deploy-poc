@@ -33,15 +33,299 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: bash scripts/changed-root-modules.sh
 
-  root-module:
-    name: ${{ matrix.module }}
+  check-jobs:
+    name: Every root module has jobs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/check-deploy-jobs.sh
+
+  shared-x-test:
+    name: shared-x
     needs: changes
-    if: needs.changes.outputs.modules != '[]'
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJSON(needs.changes.outputs.modules) }}
-    uses: ./.github/workflows/root-module.yml
-    with:
-      module: ${{ matrix.module }}
-      fail_test: ${{ inputs.fail_test == matrix.module }}
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-x')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: shared-x, environment: test }
+  shared-x-plan:
+    name: shared-x
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-x')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: shared-x, environment: prod }
+  shared-x-prod:
+    name: shared-x
+    needs: [shared-x-test, shared-x-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: shared-x, environment: prod, saved_plan: true }
+
+  shared-y-test:
+    name: shared-y
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-y')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: shared-y, environment: test }
+  shared-y-plan:
+    name: shared-y
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-y')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: shared-y, environment: prod }
+  shared-y-prod:
+    name: shared-y
+    needs: [shared-y-test, shared-y-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: shared-y, environment: prod, saved_plan: true }
+
+  shared-z-test:
+    name: shared-z
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-z')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: shared-z, environment: test }
+  shared-z-plan:
+    name: shared-z
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'shared-z')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: shared-z, environment: prod }
+  shared-z-prod:
+    name: shared-z
+    needs: [shared-z-test, shared-z-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: shared-z, environment: prod, saved_plan: true }
+
+  team-a-test:
+    name: team-a
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-a')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-a, environment: test }
+  team-a-plan:
+    name: team-a
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-a')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-a, environment: prod }
+  team-a-prod:
+    name: team-a
+    needs: [team-a-test, team-a-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-a, environment: prod, saved_plan: true }
+
+  team-b-test:
+    name: team-b
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-b')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-b, environment: test }
+  team-b-plan:
+    name: team-b
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-b')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-b, environment: prod }
+  team-b-prod:
+    name: team-b
+    needs: [team-b-test, team-b-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-b, environment: prod, saved_plan: true }
+
+  team-c-test:
+    name: team-c
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-c')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-c, environment: test }
+  team-c-plan:
+    name: team-c
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-c')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-c, environment: prod }
+  team-c-prod:
+    name: team-c
+    needs: [team-c-test, team-c-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-c, environment: prod, saved_plan: true }
+
+  team-d-test:
+    name: team-d
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-d')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-d, environment: test }
+  team-d-plan:
+    name: team-d
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-d')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-d, environment: prod }
+  team-d-prod:
+    name: team-d
+    needs: [team-d-test, team-d-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-d, environment: prod, saved_plan: true }
+
+  team-e-test:
+    name: team-e
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-e')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-e, environment: test }
+  team-e-plan:
+    name: team-e
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-e')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-e, environment: prod }
+  team-e-prod:
+    name: team-e
+    needs: [team-e-test, team-e-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-e, environment: prod, saved_plan: true }
+
+  team-f-test:
+    name: team-f
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-f')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-f, environment: test }
+  team-f-plan:
+    name: team-f
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-f')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-f, environment: prod }
+  team-f-prod:
+    name: team-f
+    needs: [team-f-test, team-f-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-f, environment: prod, saved_plan: true }
+
+  team-g-test:
+    name: team-g
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-g')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-g, environment: test }
+  team-g-plan:
+    name: team-g
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-g')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-g, environment: prod }
+  team-g-prod:
+    name: team-g
+    needs: [team-g-test, team-g-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-g, environment: prod, saved_plan: true }
+
+  team-h-test:
+    name: team-h
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-h')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-h, environment: test }
+  team-h-plan:
+    name: team-h
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-h')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-h, environment: prod }
+  team-h-prod:
+    name: team-h
+    needs: [team-h-test, team-h-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-h, environment: prod, saved_plan: true }
+
+  team-i-test:
+    name: team-i
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-i')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-i, environment: test }
+  team-i-plan:
+    name: team-i
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-i')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-i, environment: prod }
+  team-i-prod:
+    name: team-i
+    needs: [team-i-test, team-i-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-i, environment: prod, saved_plan: true }
+
+  team-j-test:
+    name: team-j
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-j')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-j, environment: test }
+  team-j-plan:
+    name: team-j
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-j')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-j, environment: prod }
+  team-j-prod:
+    name: team-j
+    needs: [team-j-test, team-j-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-j, environment: prod, saved_plan: true }
+
+  team-k-test:
+    name: team-k
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-k')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-k, environment: test }
+  team-k-plan:
+    name: team-k
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-k')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-k, environment: prod }
+  team-k-prod:
+    name: team-k
+    needs: [team-k-test, team-k-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-k, environment: prod, saved_plan: true }
+
+  team-l-test:
+    name: team-l
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-l')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-l, environment: test }
+  team-l-plan:
+    name: team-l
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-l')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-l, environment: prod }
+  team-l-prod:
+    name: team-l
+    needs: [team-l-test, team-l-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-l, environment: prod, saved_plan: true }
+
+  team-m-test:
+    name: team-m
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-m')
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-m, environment: test }
+  team-m-plan:
+    name: team-m
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.modules), 'team-m')
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { module: team-m, environment: prod }
+  team-m-prod:
+    name: team-m
+    needs: [team-m-test, team-m-plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with: { module: team-m, environment: prod, saved_plan: true }

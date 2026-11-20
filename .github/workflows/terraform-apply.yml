@@ -1,0 +1,47 @@
+name: Terraform apply
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      saved_plan:
+        description: Apply the plan that terraform-plan.yml saved in this run
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: ${{ inputs.module }}-${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: inputs.saved_plan
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: plan-${{ inputs.environment }}-${{ inputs.module }}
+          path: plan/
+      - if: github.event.inputs.fail_test == inputs.module && inputs.environment == 'test'
+        env:
+          MODULE: ${{ inputs.module }}
+        run: |
+          echo "::error::Deploy test of $MODULE failed (fail_test)"
+          exit 1
+      - uses: ./.github/actions/terraform
+        with:
+          module: ${{ inputs.module }}
+          workspace: ${{ inputs.environment }}
+          command: apply
+          plan-file: ${{ inputs.saved_plan && format('plan/{0}.tfplan', inputs.module) || '' }}
