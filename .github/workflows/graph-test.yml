@@ -1,0 +1,16 @@
+name: Graph test
+
+on:
+  workflow_dispatch:
+    inputs:
+      fail_test:
+        default: team-a
+
+permissions:
+  contents: read
+
+jobs:
+  team-a:
+    uses: ./.github/workflows/root-module.yml
+    with:
+      module: team-a
