@@ -1,0 +1,65 @@
+name: Root module
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        type: string
+        required: true
+      fail_test:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test:
+    name: Deploy test
+    runs-on: ubuntu-latest
+    environment: test
+    concurrency:
+      group: ${{ inputs.module }}-test
+    env:
+      MODULE: ${{ inputs.module }}
+    steps:
+      - run: |
+          echo "terraform plan, workspace test: src/$MODULE"
+          echo "terraform apply, workspace test: src/$MODULE"
+      - if: inputs.fail_test
+        run: |
+          echo "::error::Deploy test failed for $MODULE (fail_test)"
+          exit 1
+
+  plan-prod:
+    name: Plan prod
+    runs-on: ubuntu-latest
+    env:
+      MODULE: ${{ inputs.module }}
+    steps:
+      - run: |
+          mkdir -p plan
+          echo "terraform plan -out, workspace prod: src/$MODULE" | tee "plan/$MODULE.tfplan"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: prod-plan-${{ inputs.module }}
+          path: plan/
+          retention-days: 7
+
+  deploy-prod:
+    name: Deploy prod
+    needs: [deploy-test, plan-prod]
+    runs-on: ubuntu-latest
+    environment: prod
+    concurrency:
+      group: ${{ inputs.module }}-prod
+    env:
+      MODULE: ${{ inputs.module }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: prod-plan-${{ inputs.module }}
+          path: plan/
+      - run: |
+          cat "plan/$MODULE.tfplan"
+          echo "terraform apply of the saved plan, workspace prod: src/$MODULE"
