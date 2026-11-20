@@ -1,0 +1,53 @@
+name: Deploy (run per root module)
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: Root modules to deploy, comma-separated, or all
+        default: all
+      fail_test:
+        description: Root module whose Deploy test fails
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Changed root modules
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.select.outputs.modules }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: select
+        env:
+          SELECTION: ${{ inputs.modules }}
+          BEFORE: ${{ github.event.before }}
+        run: bash scripts/changed-root-modules.sh
+
+  start:
+    name: Start a run per root module
+    needs: changes
+    if: needs.changes.outputs.modules != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MODULES: ${{ needs.changes.outputs.modules }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          FAIL_TEST: ${{ inputs.fail_test }}
+        run: |
+          for MODULE in $(jq -r '.[]' <<<"$MODULES"); do
+            gh workflow run root-module.yml --ref "$BRANCH" \
+              -f module="$MODULE" -f ref="$COMMIT" -f fail_test="$FAIL_TEST"
+            echo "Started Deploy $MODULE at $COMMIT"
+          done

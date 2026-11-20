@@ -1,4 +1,5 @@
 name: Root module
+run-name: Deploy ${{ inputs.module }}
 
 on:
   workflow_call:
@@ -6,6 +7,20 @@ on:
       module:
         type: string
         required: true
+      ref:
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      module:
+        description: Root module, a folder under src/
+        required: true
+      ref:
+        description: Commit to deploy
+        required: true
+      fail_test:
+        description: Root module whose Deploy test fails
+        default: ""
 
 permissions:
   contents: read
@@ -16,12 +31,14 @@ jobs:
     with:
       module: ${{ inputs.module }}
       environment: test
+      ref: ${{ inputs.ref }}
 
   plan-prod:
     uses: ./.github/workflows/terraform-plan.yml
     with:
       module: ${{ inputs.module }}
       environment: prod
+      ref: ${{ inputs.ref }}
 
   deploy-prod:
     needs: [deploy-test, plan-prod]
@@ -29,4 +46,5 @@ jobs:
     with:
       module: ${{ inputs.module }}
       environment: prod
+      ref: ${{ inputs.ref }}
       saved_plan: true
