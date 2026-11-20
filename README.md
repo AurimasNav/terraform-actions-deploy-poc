@@ -76,20 +76,27 @@ GitHub, one run per merge
   A failed Deploy test skips only its own module's Deploy prod.
 ```
 
-### Explicit jobs or a matrix
+### Three layouts
 
 GitHub draws dependency arrows only between a workflow's top-level jobs, and its only loop,
 [`strategy.matrix`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstrategymatrix),
-makes one top-level job. So:
+makes one top-level job. All three layouts run the same jobs through the same reusable
+workflows.
 
-- **Explicit jobs** ([deploy.yml](.github/workflows/deploy.yml)): the graph draws each root
-  module's chain. A new root module needs its three jobs, 17 lines;
-  **Every root module has jobs** ([scripts/check-deploy-jobs.sh](scripts/check-deploy-jobs.sh))
-  fails when a folder under `src/` has none.
-- **Matrix** ([deploy-matrix.yml](.github/workflows/deploy-matrix.yml), Run workflow only):
-  runs [root-module.yml](.github/workflows/root-module.yml), the same three jobs, once per
-  changed root module. A new root module is only a new folder, but the graph shows each
-  root module's jobs as a flat list, without the arrows. The dependency still holds.
+| | Explicit jobs | Matrix | Run per root module |
+|---|---|---|---|
+| Workflow | [deploy.yml](.github/workflows/deploy.yml), on push | [deploy-matrix.yml](.github/workflows/deploy-matrix.yml), Run workflow | [deploy-per-module.yml](.github/workflows/deploy-per-module.yml), Run workflow |
+| New root module | its three jobs, 17 lines; **Every root module has jobs** ([scripts/check-deploy-jobs.sh](scripts/check-deploy-jobs.sh)) fails without them | a new folder | a new folder |
+| Arrows from Deploy test and Plan prod to Deploy prod | yes | no: each root module's jobs are a flat list | yes, in each root module's run |
+| Root modules the push didn't change | shown as skipped | not shown | no run |
+| Approval of `prod` | one for every root module waiting in the run | one for every root module waiting in the run | one per root module |
+| Runs per deploy | one | one | one that lists the changed root modules, plus one per root module, linked from its summary |
+
+**Run per root module:** **Start a run per root module** starts
+[root-module.yml](.github/workflows/root-module.yml) with
+[`workflow_dispatch`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow)
+for each changed root module, with the commit to deploy as an input: a started run takes
+its workflow files from the branch's latest commit, and checks out the given commit.
 
 ## Runs
 
@@ -98,12 +105,13 @@ Measured on 2026-11-20:
 | Run | What happened |
 |---|---|
 | [Explicit jobs, `fail_test: team-c`](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44715164243) | team-c's Deploy test failed and only its Deploy prod was skipped. One approval of `prod` started the other 15 Deploy prod. |
-| [Push changing only team-b](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44715613020) | Only team-b's three jobs ran; the other root modules' jobs show as skipped. |
+| [Explicit jobs, push changing only team-b](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44715613020) | Only team-b's three jobs ran; the other root modules' jobs show as skipped. |
 | [Matrix, `team-a,team-c`, `fail_test: team-c`](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44715391454) | team-a deployed to prod; team-c's Deploy prod was skipped. |
+| [Run per root module, `team-a,team-b,team-c`, `fail_test: team-c`](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44716981069) | Started [team-a](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44717016043), [team-b](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44717020222) and [team-c](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44717023786). team-c's Deploy test failed and its Deploy prod was skipped. Approving team-a's run deployed team-a while team-b's Deploy prod kept waiting for its own approval. |
 | [Started while another run waited for approval](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44710269602) | Its Deploy prod jobs stayed pending until the [older run](https://github.com/AurimasNav/terraform-actions-deploy-poc/actions/runs/44710184043) was approved. |
 
 To try it (needs write access, and the repository owner approves `prod`): Actions,
-**Deploy** or **Deploy (matrix)**, Run workflow, with `fail_test` set to a root module.
+**Deploy**, **Deploy (matrix)** or **Deploy (run per root module)**, Run workflow, with `fail_test` set to a root module.
 
 ## Limits
 
